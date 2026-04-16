@@ -3,7 +3,7 @@ import {
   ShieldCheck, LayoutDashboard, Search, List, Users, 
   MessageSquare, CheckCircle, Activity, History, 
   BarChart3, FileText, Send, Sparkles, TrendingUp, Rocket,
-  AlertCircle, ChevronRight, Mail, Clock, ArrowUpRight
+  AlertCircle, ChevronRight, Mail, Clock, ArrowUpRight, Zap
 } from 'lucide-react';
 
 const API_BASE = "https://weaveos-backend.vercel.app";
@@ -49,9 +49,19 @@ function App() {
 
       const repRes = await fetch(`${API_BASE}/reports/${tenantId}`);
       if (repRes.ok) setReports(await repRes.json());
-    } catch (err) {
-      console.error("Fetch failed", err);
-    }
+    } catch (err) {}
+  };
+
+  const seedDemoData = async () => {
+    setLoading(true);
+    await fetch(`${API_BASE}/seed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId })
+    });
+    await refreshAllData();
+    setLoading(false);
+    alert("Demo ready! Check all tabs.");
   };
 
   const startResearch = async () => {
@@ -66,29 +76,29 @@ function App() {
       });
       if (!res.ok) throw new Error(`API Error: ${res.status}`);
       await refreshAllData();
-    } catch (err) { 
-      setError(err.message); 
-    }
+    } catch (err) { setError(err.message); }
     setLoading(false);
   };
 
   const triggerNegotiation = async (product) => {
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/negotiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenant_id: tenantId,
-          supplier_id: "supplier_" + Math.floor(Math.random()*1000),
+          supplier_id: "demo_supplier",
           supplier_email: "sales@d2c-supplier.in",
-          target_price: product.price * 0.7
+          target_price: (product.price || 1500) * 0.7
         })
       });
       if (res.ok) {
-        alert("D2C Wingman has sent a negotiation email!");
+        alert("Negotiation started!");
         setActiveTab("NEGOTIATIONS");
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {}
+    setLoading(false);
   };
 
   return (
@@ -104,40 +114,40 @@ function App() {
           <SidebarItem onClick={() => setActiveTab("DISCOVERY")} icon={Search} label="Discovery" active={activeTab === "DISCOVERY"} />
           <SidebarItem onClick={() => setActiveTab("NEGOTIATIONS")} icon={MessageSquare} label="Negotiations" active={activeTab === "NEGOTIATIONS"} />
           <SidebarItem onClick={() => setActiveTab("REPORTS")} icon={FileText} label="Reports" active={activeTab === "REPORTS"} />
-          <div style={{ margin: '20px 0 10px', padding: '0 16px', fontSize: '11px', color: '#475569', fontWeight: '600', letterSpacing: '0.05em' }}>DEMO ONLY</div>
+          <div style={{ margin: '20px 0 10px', padding: '0 16px', fontSize: '11px', color: '#475569', fontWeight: '600', letterSpacing: '0.05em' }}>MOCK TABS</div>
           <SidebarItem icon={List} label="Shortlisted" />
           <SidebarItem icon={Users} label="Suppliers" />
         </div>
-        <div style={{ borderTop: '1px solid #1e293b', paddingTop: '20px', padding: '0 16px', color: '#475569', fontSize: '11px' }}>LIVE AGENT GATEWAY READY</div>
+        <button onClick={seedDemoData} style={{ marginBottom: '20px', padding: '12px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+          <Zap size={14} color="#eab308" /> Prepare Demo Data
+        </button>
       </aside>
-
       <main style={{ flex: 1, marginLeft: '260px', padding: '40px', overflowY: 'auto' }}>
         {activeTab === "DISCOVERY" && (
           <>
             <header style={{ marginBottom: '40px' }}>
               <h2 style={{ fontSize: '30px', fontWeight: '700', marginBottom: '8px' }}>Discovery</h2>
-              <p style={{ color: '#94a3b8' }}>Search any product to trigger the autonomous sourcing chain.</p>
+              <p style={{ color: '#94a3b8' }}>Trigger the autonomous sourcing agents.</p>
             </header>
             <section style={{ background: 'linear-gradient(145deg, #0a0a14 0%, #11111f 100%)', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px', marginBottom: '40px' }}>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <input 
-                  value={keyword} onChange={(e) => setKeyword(e.target.value)} 
-                  placeholder="e.g. Bamboo Brushes, Yoga Mats..." 
-                  style={{ flex: 1, padding: '14px', borderRadius: '8px', border: '1px solid #334155', background: '#020205', color: 'white', fontSize: '15px' }}
-                />
+                <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. Bamboo Brushes, Yoga Mats..." style={{ flex: 1, padding: '14px', borderRadius: '8px', border: '1px solid #334155', background: '#020205', color: 'white', fontSize: '15px' }} />
                 <button onClick={startResearch} disabled={loading} style={{ padding: '0 32px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}>
                   {loading ? "Agent Orchestrating..." : "Start Research"}
                 </button>
               </div>
             </section>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
-              {products.length === 0 && !loading && <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px', border: '2px dashed #1e293b', borderRadius: '16px', color: '#475569' }}>No active research. Try searching above!</div>}
               {products.map((p, i) => (
                 <div key={i} style={{ background: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '16px', padding: '24px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <div style={{ background: '#064e3b', color: '#10b981', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' }}>{p.winningScore}% WIN SCORE</div>
                   </div>
                   <h4 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>{p.name}</h4>
+                  <div style={{ padding: '12px', background: '#11111A', borderRadius: '12px', border: '1px solid #1e293b', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '10px', color: '#475569' }}>MARKET PRICE</div>
+                    <div style={{ fontSize: '18px', fontWeight: '700' }}>₹{p.price}</div>
+                  </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #334155', color: 'white', borderRadius: '8px' }}>Shortlist</button>
                     <button onClick={() => triggerNegotiation(p)} style={{ flex: 1, padding: '10px', background: '#6366f1', border: 'none', color: 'white', borderRadius: '8px', fontWeight: '600' }}>Negotiate</button>
@@ -154,10 +164,7 @@ function App() {
               {negotiations.length === 0 && <p style={{ color: '#475569' }}>No active negotiations.</p>}
               {negotiations.map((n, i) => (
                 <div key={i} style={{ background: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>{n.supplier.name}</div>
-                    <div style={{ fontSize: '12px', color: '#6366f1' }}>{n.status}</div>
-                  </div>
+                  <div><div style={{ fontWeight: '600', marginBottom: '4px' }}>{n.supplier?.name || "Supplier" }</div><div style={{ fontSize: '12px', color: '#6366f1' }}>{n.status}</div></div>
                   <button style={{ padding: '8px 16px', background: '#1A1A2F', color: '#6366f1', border: 'none', borderRadius: '6px' }}>View Thread</button>
                 </div>
               ))}
@@ -168,7 +175,6 @@ function App() {
           <>
             <h2 style={{ fontSize: '30px', fontWeight: '700', marginBottom: '32px' }}>Intelligence Reports</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              {reports.length === 0 && <p style={{ color: '#475569' }}>No reports found.</p>}
               {reports.map((r, i) => (
                 <div key={i} style={{ background: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
                   <div style={{ color: '#6366f1', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>{r.type}</div>
@@ -190,7 +196,6 @@ function App() {
           </>
         )}
       </main>
-      <style>{` .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } `}</style>
     </div>
   );
 }
