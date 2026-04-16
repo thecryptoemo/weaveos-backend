@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-py"
+  provider             = "prisma-client-py"
   recursive_type_depth = -1
 }
 
@@ -22,9 +22,9 @@ model Product {
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
   name         String
   category     String
-  status       String   @default("RESEARCHING") // RESEARCHING, SHORTLISTED, SUPPLIER_SEARCH, NEGOTIATING, APPROVED
+  status       String   @default("RESEARCHING")
   winningScore Float?
-  marketData   String?  // JSON string
+  marketData   String?  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   suppliers    Supplier[]
@@ -49,7 +49,7 @@ model Negotiation {
   supplierId  String
   supplier    Supplier @relation(fields: [supplierId], references: [id])
   status      String   @default("ACTIVE")
-  history     String   @default("[]") // JSON string of messages
+  history     String   @default("[]")
   createdAt   DateTime @default(now())
 }
 
@@ -68,6 +68,6 @@ model StoreBrain {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
   key      String
-  value    String // JSON string
+  value    String 
   @@unique([tenantId, key])
 }
