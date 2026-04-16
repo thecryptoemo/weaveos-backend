@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+prisma
+langgraph
+langchain
+langchain-anthropic
+langchain-openai
+httpx
+pydantic
+uuid
