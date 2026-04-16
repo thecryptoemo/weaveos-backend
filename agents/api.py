@@ -1,4 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents.sourcing.graph import sourcing_graph
 from agents.sourcing.negotiator import NegotiationAgent
@@ -7,6 +8,14 @@ import uuid
 import json
 
 app = FastAPI(title="D2C Wingman Agent Gateway")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ResearchRequest(BaseModel):
     tenant_id: str
@@ -30,14 +39,8 @@ async def root():
 async def health():
     return {"status": "operational"}
 
-# --- SOURCING ENDPOINTS ---
-
 @app.post("/research")
 async def start_research(req: ResearchRequest):
-    """
-    SYNC RESEARCH (Required for Vercel Free Tier).
-    In serverless, background tasks are killed immediately after response.
-    """
     thread_id = str(uuid.uuid4())
     inputs = {
         "tenant_id": req.tenant_id,
@@ -49,8 +52,6 @@ async def start_research(req: ResearchRequest):
         "report_id": None,
         "status": "STARTING"
     }
-    
-    # We wait for the graph to complete so Vercel doesn't kill the process
     try:
         await sourcing_graph.ainvoke(inputs)
         return {"status": "COMPLETED", "thread_id": thread_id}
@@ -66,14 +67,11 @@ async def get_products(tenant_id: str):
         order={"createdAt": "desc"}
     )
 
-# --- NEGOTIATION ENDPOINTS ---
-
 @app.post("/negotiate")
 async def start_negotiation(req: NegotiateRequest):
     agent = NegotiationAgent(req.tenant_id, req.supplier_id, req.supplier_email, req.target_price)
     email = await agent.generate_opening_email()
     neg_id = await agent.persist_negotiation(email["subject"], email["body"])
-    
     return {"status": "NEGOTIATION_STARTED", "negotiation_id": neg_id, "draft": email}
 
 @app.get("/negotiations/{tenant_id}")
@@ -84,8 +82,6 @@ async def get_negotiations(tenant_id: str):
         include={"supplier": True},
         order={"createdAt": "desc"}
     )
-
-# --- REPORT ENDPOINTS ---
 
 @app.get("/reports/{tenant_id}")
 async def get_reports(tenant_id: str):
