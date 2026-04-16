@@ -6,7 +6,7 @@ from agents.db import get_db
 import uuid
 import json
 
-app = FastAPI(title="WeaveOS Agent Gateway")
+app = FastAPI(title="D2C Wingman Agent Gateway")
 
 class ResearchRequest(BaseModel):
     tenant_id: str
@@ -21,7 +21,7 @@ class NegotiateRequest(BaseModel):
 @app.get("/")
 async def root():
     return {
-        "name": "WeaveOS API Gateway",
+        "name": "D2C Wingman API Gateway",
         "status": "operational",
         "endpoints": ["/health", "/research", "/products", "/negotiate", "/reports"]
     }

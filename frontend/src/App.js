@@ -50,7 +50,7 @@ function App() {
       <aside style={{ width: '260px', borderRight: '1px solid #1e293b', padding: '24px 16px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ marginBottom: '32px', padding: '0 16px' }}>
           <h1 style={{ fontSize: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShieldCheck color="#6366f1" size={24} /> WeaveOS
+            <ShieldCheck color="#6366f1" size={24} /> D2C Wingman
           </h1>
         </div>
         
@@ -77,7 +77,7 @@ function App() {
       <main style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
         <header style={{ marginBottom: '40px' }}>
           <h2 style={{ fontSize: '30px', fontWeight: '700', marginBottom: '8px' }}>Product Discovery</h2>
-          <p style={{ color: '#94a3b8' }}>Discover winning products and reliable suppliers using WeaveOS AI Agents.</p>
+          <p style={{ color: '#94a3b8' }}>Discover winning products and reliable suppliers using D2C Wingman AI Agents.</p>
         </header>
 
         {/* SEARCH BOX */}
@@ -168,7 +168,7 @@ function App() {
 }
 
 const quickActionStyle = {
-  padding: '10px 20px', background: '#0a0a0f', border: '1px solid #1e293b', color: '#94a3b8',
+  padding: '10px 20px', background: '#0a0a0f', border: '1px solid #1e293b', color: '#94a3b8', 
   borderRadius: '20px', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
 };
 
