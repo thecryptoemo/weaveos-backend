@@ -1,6 +1,5 @@
 {
-  "framework": "fastapi",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index.py" }
+    { "source": "/(.*)", "destination": "/main.py" }
   ]
 }
