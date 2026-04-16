@@ -40,20 +40,17 @@ async def seed_data(req: dict):
     tenant_id = req.get("tenant_id", "hackathon_demo")
     db = await get_db()
     await db.tenant.upsert(where={"id": tenant_id}, data={"create": {"id": tenant_id, "name": "Demo Brand"}, "update": {}})
-    product = await db.product.create(data={"tenantId": tenant_id, "name": "Eco Cork Mat", "category": "Fitness", "status": "SUPPLIER_SEARCH", "winningScore": 82.5, "marketData": json.dumps({"price": 3100.0})})
-    supplier = await db.supplier.create(data={"tenantId": tenant_id, "productId": product.id, "name": "GreenLife Mfg", "source": "IndiaMART", "price": 1200.0, "moq": 100, "rating": 4.8, "status": "NEGOTIATING"})
-    await db.negotiation.create(data={"supplierId": supplier.id, "status": "AWAITING_REPLY", "history": json.dumps([{"role": "agent", "content": "Inquiry sent."}])})
-    await db.report.create(data={"tenantId": tenant_id, "title": "Market Brief: Cork Mats", "content": "High demand detected.", "type": "RESEARCH"})
+    # 1. Shortlisted product
+    await db.product.create(data={"tenantId": tenant_id, "name": "Bamboo Smart Toothbrush", "category": "Personal Care", "status": "SHORTLISTED", "winningScore": 89.2, "marketData": json.dumps({"price": 1200.0})})
+    # 2. Product with suppliers
+    product = await db.product.create(data={"tenantId": tenant_id, "name": "Organic Cotton Rug", "category": "Home", "status": "SUPPLIER_SEARCH", "winningScore": 76.4, "marketData": json.dumps({"price": 4500.0})})
+    supplier1 = await db.supplier.create(data={"tenantId": tenant_id, "productId": product.id, "name": "EcoFabric Ltd", "source": "IndiaMART", "price": 1650.0, "moq": 100, "rating": 4.9, "status": "NEGOTIATING"})
+    await db.supplier.create(data={"tenantId": tenant_id, "productId": product.id, "name": "Textile Corp", "source": "IndiaMART", "price": 1800.0, "moq": 50, "rating": 4.6, "status": "DISCOVERED"})
+    # 3. Negotiation
+    await db.negotiation.create(data={"supplierId": supplier1.id, "status": "AWAITING_REPLY", "history": json.dumps([{"role": "agent", "content": "Anchor price at ₹1100."}])})
+    # 4. Report
+    await db.report.create(data={"tenantId": tenant_id, "title": "Supply Chain Brief", "content": "Panipat weaving clusters identified.", "type": "SOURCING"})
     return {"status": "SUCCESS"}
-
-@app.post("/research")
-async def start_research(req: ResearchRequest):
-    inputs = {"tenant_id": req.tenant_id, "keyword": req.keyword, "asins": [], "products_data": [], "selected_product_index": None, "suppliers": [], "report_id": None, "status": "STARTING"}
-    try:
-        await sourcing_graph.ainvoke(inputs)
-        return {"status": "COMPLETED"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/products/{tenant_id}")
 async def get_products(tenant_id: str):
@@ -69,6 +66,20 @@ async def get_products(tenant_id: str):
         results.append(data)
     return results
 
+@app.get("/suppliers/{tenant_id}")
+async def get_suppliers(tenant_id: str):
+    db = await get_db()
+    return await db.supplier.find_many(where={"tenantId": tenant_id}, include={"product": True}, order={"rating": "desc"})
+
+@app.post("/research")
+async def start_research(req: ResearchRequest):
+    inputs = {"tenant_id": req.tenant_id, "keyword": req.keyword, "asins": [], "products_data": [], "selected_product_index": None, "suppliers": [], "report_id": None, "status": "STARTING"}
+    try:
+        await sourcing_graph.ainvoke(inputs)
+        return {"status": "COMPLETED"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/negotiate")
 async def start_negotiation(req: NegotiateRequest):
     agent = NegotiationAgent(req.tenant_id, req.supplier_id, req.supplier_email, req.target_price)
@@ -79,7 +90,7 @@ async def start_negotiation(req: NegotiateRequest):
 @app.get("/negotiations/{tenant_id}")
 async def get_negotiations(tenant_id: str):
     db = await get_db()
-    return await db.negotiation.find_many(where={"supplier": {"tenantId": tenant_id}}, include={"supplier": True}, order={"createdAt": "desc"})
+    return await db.negotiation.find_many(where={"supplier": {"tenantId": tenant_id}}, include={"supplier": {"include": {"product": True}}}, order={"createdAt": "desc"})
 
 @app.get("/reports/{tenant_id}")
 async def get_reports(tenant_id: str):
