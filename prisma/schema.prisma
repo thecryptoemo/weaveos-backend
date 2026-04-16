@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-py"
+  recursive_type_depth = -1
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  products  Product[]
+  reports   Report[]
+  storeBrain StoreBrain[]
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String
+  category     String
+  status       String   @default("RESEARCHING") // RESEARCHING, SHORTLISTED, SUPPLIER_SEARCH, NEGOTIATING, APPROVED
+  winningScore Float?
+  marketData   String?  // JSON string
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  suppliers    Supplier[]
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  tenantId     String
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id])
+  name         String
+  source       String
+  price        Float?
+  moq          Int?
+  rating       Float?
+  status       String   @default("DISCOVERED")
+  negotiations Negotiation[]
+}
+
+model Negotiation {
+  id          String   @id @default(cuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  status      String   @default("ACTIVE")
+  history     String   @default("[]") // JSON string of messages
+  createdAt   DateTime @default(now())
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  title     String
+  content   String
+  type      String   @default("RESEARCH")
+  createdAt DateTime @default(now())
+}
+
+model StoreBrain {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  key      String
+  value    String // JSON string
+  @@unique([tenantId, key])
+}
