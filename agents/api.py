@@ -18,6 +18,14 @@ class NegotiateRequest(BaseModel):
     supplier_email: str
     target_price: float
 
+@app.get("/")
+async def root():
+    return {
+        "name": "WeaveOS API Gateway",
+        "status": "operational",
+        "endpoints": ["/health", "/research", "/products", "/negotiate", "/reports"]
+    }
+
 @app.get("/health")
 async def health():
     return {"status": "operational"}
@@ -25,23 +33,29 @@ async def health():
 # --- SOURCING ENDPOINTS ---
 
 @app.post("/research")
-async def start_research(req: ResearchRequest, background_tasks: BackgroundTasks):
+async def start_research(req: ResearchRequest):
+    """
+    SYNC RESEARCH (Required for Vercel Free Tier).
+    In serverless, background tasks are killed immediately after response.
+    """
     thread_id = str(uuid.uuid4())
-    async def run_research():
-        inputs = {
-            "tenant_id": req.tenant_id,
-            "keyword": req.keyword,
-            "asins": [],
-            "products_data": [],
-            "selected_product_index": None,
-            "suppliers": [],
-            "report_id": None,
-            "status": "STARTING"
-        }
+    inputs = {
+        "tenant_id": req.tenant_id,
+        "keyword": req.keyword,
+        "asins": [],
+        "products_data": [],
+        "selected_product_index": None,
+        "suppliers": [],
+        "report_id": None,
+        "status": "STARTING"
+    }
+    
+    # We wait for the graph to complete so Vercel doesn't kill the process
+    try:
         await sourcing_graph.ainvoke(inputs)
-
-    background_tasks.add_task(run_research)
-    return {"status": "QUEUED", "thread_id": thread_id}
+        return {"status": "COMPLETED", "thread_id": thread_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/products/{tenant_id}")
 async def get_products(tenant_id: str):
@@ -60,13 +74,11 @@ async def start_negotiation(req: NegotiateRequest):
     email = await agent.generate_opening_email()
     neg_id = await agent.persist_negotiation(email["subject"], email["body"])
     
-    # In a real app, this would also call GMAIL_SEND_EMAIL
     return {"status": "NEGOTIATION_STARTED", "negotiation_id": neg_id, "draft": email}
 
 @app.get("/negotiations/{tenant_id}")
 async def get_negotiations(tenant_id: str):
     db = await get_db()
-    # Fetch negotiations via their suppliers
     return await db.negotiation.find_many(
         where={"supplier": {"tenantId": tenant_id}},
         include={"supplier": True},
@@ -82,7 +94,3 @@ async def get_reports(tenant_id: str):
         where={"tenantId": tenant_id},
         order={"createdAt": "desc"}
     )
-
-if __name__ == "__main__":
-    import uvicorn
-    print("FastAPI Gateway updated with Email Negotiation and Report support.")
