@@ -48,6 +48,8 @@ async def seed_data(req: dict):
     t_id = req.get("tenant_id", "hackathon_demo")
     db = await get_db()
     try:
+        await db.intelligencealert.delete_many(where={"tenantId": t_id})
+        await db.order.delete_many(where={"tenantId": t_id})
         await db.negotiation.delete_many(where={"supplier": {"tenantId": t_id}})
         await db.supplier.delete_many(where={"tenantId": t_id})
         await db.product.delete_many(where={"tenantId": t_id})
@@ -56,36 +58,29 @@ async def seed_data(req: dict):
         await db.agenttask.delete_many(where={"tenantId": t_id})
     except: pass
     await db.tenant.upsert(where={"id": t_id}, data={"create": {"id": t_id, "name": "Brand"}, "update": {}})
-    await db.product.create(data={"tenantId": t_id, "name": "Bamboo Smart Toothbrush", "category": "Personal Care", "status": "RESEARCHING", "winningScore": 89.2})
-    await db.product.create(data={"tenantId": t_id, "name": "Premium Silk Pillowcases", "category": "Home", "status": "SHORTLISTED", "winningScore": 94.5})
-    p_rug = await db.product.create(data={"tenantId": t_id, "name": "Organic Cotton Rug", "category": "Wellness", "status": "SUPPLIER_SEARCH", "winningScore": 76.4, "marketData": json.dumps({"price": 4500})})
-    s_eco = await db.supplier.create(data={"tenantId": t_id, "productId": p_rug.id, "name": "EcoFabric Ltd", "source": "IndiaMART", "price": 1650.0, "rating": 4.9, "status": "NEGOTIATING"})
-    await db.supplier.create(data={"tenantId": t_id, "productId": p_rug.id, "name": "Textile India", "source": "IndiaMART", "price": 1800.0, "rating": 4.6, "status": "DISCOVERED"})
-    await db.negotiation.create(data={"supplierId": s_eco.id, "status": "AWAITING_REPLY", "history": json.dumps([{"role": "agent", "content": "Hi EcoFabric team, we're looking to procure Organic Cotton Yoga Rugs. Our target price is ₹1100 given our scale. Can you support this?"}, {"role": "supplier", "content": "Thank you. ₹1100 is low. We can offer ₹1400 for 500 units."}])})
-    await db.report.create(data={"tenantId": t_id, "title": "Supply Chain Risk Analysis", "content": "AI identified low risk weaving clusters in Panipat.", "type": "SOURCING"})
-    await db.auditlog.create(data={"tenantId": t_id, "action": "RESEARCH_STARTED", "entity": "Organic Goods"})
-    await db.auditlog.create(data={"tenantId": t_id, "action": "PRODUCT_SHORTLISTED", "entity": "Silk Pillowcases"})
-    await db.agenttask.create(data={"tenantId": t_id, "agentName": "Sourcing Agent", "status": "NEGOTIATING", "progress": 65, "details": "Evaluating counter-offer from EcoFabric Ltd"})
+    await db.product.create(data={"tenantId": t_id, "name": "Organic Neem Wood Comb", "category": "Personal Care", "status": "RESEARCHING", "winningScore": 75})
+    await db.product.create(data={"tenantId": t_id, "name": "Bamboo Toothbrush Set", "category": "Personal Care", "status": "SHORTLISTED", "winningScore": 82})
+    p_comb = await db.product.create(data={"tenantId": t_id, "name": "Handmade Neem Comb", "category": "Personal Care", "status": "APPROVED", "winningScore": 88})
+    s_green = await db.supplier.create(data={"tenantId": t_id, "productId": p_comb.id, "name": "GreenCraft Industries", "source": "IndiaMART", "price": 38.0, "moq": 1000, "rating": 4.8, "status": "APPROVED"})
+    p_brush = await db.product.create(data={"tenantId": t_id, "name": "Bamboo Toothbrush", "category": "Personal Care", "status": "NEGOTIATING", "winningScore": 82})
+    s_raj = await db.supplier.create(data={"tenantId": t_id, "productId": p_brush.id, "name": "Raj Enterprises", "source": "IndiaMART", "price": 12.5, "moq": 500, "rating": 4.2, "status": "NEGOTIATING"})
+    await db.negotiation.create(data={"supplierId": s_raj.id, "status": "ACTIVE", "history": json.dumps([{"role": "agent", "content": "Initial price check."}] )})
+    await db.order.create(data={"tenantId": t_id, "supplierId": s_green.id, "productName": "Organic Neem Wood Comb", "units": 1000, "totalAmount": 38000.0, "status": "CONFIRMED"})
+    await db.order.create(data={"tenantId": t_id, "supplierId": s_raj.id, "productName": "Bamboo Toothbrush Set", "units": 500, "totalAmount": 27500.0, "status": "IN_PRODUCTION", "eta": "08/04/2026"})
+    alerts = [
+        ("New product ready: Organic Neem Wood Comb", "SUCCESS", "NEW", "Product sourced at ₹38/unit with 71% margin potential."),
+        ("Supplier delay: 3 days", "WARNING", "ACKNOWLEDGED", "Shipment from GreenCraft Industries delayed by 3 days."),
+        ("Demand spike: +45%", "INFO", "NEW", "Sales velocity for Bamboo Toothbrush Set increased by 45%.")
+    ]
+    for title, type, badge, content in alerts: await db.intelligencealert.create(data={"tenantId": t_id, "title": title, "type": type, "badge": badge, "content": content})
+    logs = [("ORDER_CONFIRMED", "Neem Wood Comb"), ("SUPPLIER_APPROVED", "GreenCraft Industries"), ("NEGOTIATION_STARTED", "Raj Enterprises")]
+    for action, entity in logs: await db.auditlog.create(data={"tenantId": t_id, "action": action, "entity": entity})
     return {"status": "SUCCESS"}
 
 @app.get("/products/{tenant_id}")
 async def get_products(tenant_id: str):
     db = await get_db()
     return await db.product.find_many(where={"tenantId": tenant_id}, order={"createdAt": "desc"})
-
-@app.post("/shortlist/{product_id}")
-async def shortlist_product(product_id: str):
-    db = await get_db()
-    await db.product.update(where={"id": product_id}, data={"status": "SHORTLISTED"})
-    return {"status": "SUCCESS"}
-
-@app.post("/discover-suppliers/{product_id}")
-async def discover_suppliers(product_id: str):
-    db = await get_db()
-    product = await db.product.find_unique(where={"id": product_id})
-    await db.supplier.create(data={"tenantId": product.tenantId, "productId": product.id, "name": "Global Sourcing Ltd", "source": "IndiaMART", "price": 1100.0, "rating": 4.5, "status": "DISCOVERED"})
-    await db.product.update(where={"id": product_id}, data={"status": "SUPPLIER_SEARCH"})
-    return {"status": "SUCCESS"}
 
 @app.get("/suppliers/{tenant_id}")
 async def get_suppliers(tenant_id: str):
@@ -97,12 +92,15 @@ async def get_negotiations(tenant_id: str):
     db = await get_db()
     return await db.negotiation.find_many(where={"supplier": {"tenantId": tenant_id}}, include={"supplier": {"include": {"product": True}}}, order={"createdAt": "desc"})
 
-@app.post("/negotiate")
-async def start_negotiation(req: NegotiateRequest):
+@app.get("/orders/{tenant_id}")
+async def get_orders(tenant_id: str):
     db = await get_db()
-    await db.negotiation.create(data={"supplierId": req.supplier_id, "status": "AWAITING_REPLY", "history": json.dumps([{"role": "agent", "content": f"Target ₹{req.target_price}"}])})
-    await db.supplier.update(where={"id": req.supplier_id}, data={"status": "NEGOTIATING"})
-    return {"status": "SUCCESS"}
+    return await db.order.find_many(where={"tenantId": tenant_id}, include={"supplier": True}, order={"createdAt": "desc"})
+
+@app.get("/intelligence/{tenant_id}")
+async def get_intelligence(tenant_id: str):
+    db = await get_db()
+    return await db.intelligencealert.find_many(where={"tenantId": tenant_id}, order={"timestamp": "desc"})
 
 @app.get("/reports/{tenant_id}")
 async def get_reports(tenant_id: str):
@@ -114,22 +112,20 @@ async def get_logs(tenant_id: str):
     db = await get_db()
     return await db.auditlog.find_many(where={"tenantId": tenant_id}, order={"timestamp": "desc"})
 
-@app.get("/tasks/{tenant_id}")
-async def get_tasks(tenant_id: str):
-    db = await get_db()
-    return await db.agenttask.find_many(where={"tenantId": tenant_id}, order={"updatedAt": "desc"})
-
 @app.post("/research")
 async def start_research(req: ResearchRequest):
     db = await get_db()
-    prefixes = ["Premium", "Eco", "Pro", "Ultra"]
-    for i in range(4):
-        await db.product.create(data={"tenantId": req.tenant_id, "name": f"{random.choice(prefixes)} {req.keyword}", "category": "Demo", "status": "RESEARCHING", "winningScore": random.randint(65, 98)})
+    for i in range(3): await db.product.create(data={"tenantId": req.tenant_id, "name": f"Premium {req.keyword} #{i+1}", "category": "Discovery", "status": "RESEARCHING", "winningScore": random.randint(70, 95)})
     return {"status": "SUCCESS"}
 
-@app.post("/chat")
-async def assistant_chat(req: ChatRequest):
-    msg = req.message.lower()
-    if "status" in msg: response = "Agents are active. 1 negotiation in Panipat and 1 product in Discovery."
-    else: response = "I'm aligning your sourcing goals with market data to maximize margins."
-    return {"reply": response}
+@app.post("/shortlist/{id}")
+async def shortlist(id: str):
+    db = await get_db()
+    await db.product.update(where={"id": id}, data={"status": "SHORTLISTED"})
+    return {"status": "SUCCESS"}
+
+@app.post("/negotiate")
+async def negotiate(req: dict):
+    db = await get_db()
+    await db.supplier.update(where={"id": req["supplier_id"]}, data={"status": "NEGOTIATING"})
+    return {"status": "SUCCESS"}
