@@ -14,6 +14,8 @@ model Tenant {
   products  Product[]
   reports   Report[]
   storeBrain StoreBrain[]
+  logs      AuditLog[]
+  tasks     AgentTask[]
 }
 
 model Product {
@@ -70,4 +72,24 @@ model StoreBrain {
   key      String
   value    String 
   @@unique([tenantId, key])
+}
+
+model AuditLog {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  action    String
+  entity    String
+  timestamp DateTime @default(now())
+}
+
+model AgentTask {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  agentName String
+  status    String
+  progress  Int    @default(0)
+  details   String?
+  updatedAt DateTime @updatedAt
 }
