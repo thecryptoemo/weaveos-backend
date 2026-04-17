@@ -27,7 +27,7 @@ async def get_all_data(tenant_id: str):
         negs = await db.negotiation.find_many(where={"supplier": {"tenantId": tenant_id}}, include={"supplier": {"include": {"product": True}}}, order={"createdAt": "desc"})
         reps = await db.report.find_many(where={"tenantId": tenant_id}, order={"createdAt": "desc"})
         logs = await db.auditlog.find_many(where={"tenantId": tenant_id}, order={"timestamp": "desc"})
-        intel = await db.intelligencealert.find_many(where={"tenantId": tenant_id}, order={"timestamp": "desc"})
+        intel = await db.intelligence.find_many(where={"tenantId": tenant_id}, order={"timestamp": "desc"})
         orders = await db.order.find_many(where={"tenantId": tenant_id}, include={"supplier": True}, order={"createdAt": "desc"})
         tasks = await db.agenttask.find_many(where={"tenantId": tenant_id}, order={"updatedAt": "desc"})
 
@@ -43,7 +43,7 @@ async def seed_data(req: dict):
     t_id = req.get("tenant_id", "hackathon_demo")
     db = await get_db()
     try:
-        await db.intelligencealert.delete_many(where={"tenantId": t_id})
+        await db.intelligence.delete_many(where={"tenantId": t_id})
         await db.order.delete_many(where={"tenantId": t_id})
         await db.negotiation.delete_many(where={"supplier": {"tenantId": t_id}})
         await db.supplier.delete_many(where={"tenantId": t_id})
@@ -52,15 +52,17 @@ async def seed_data(req: dict):
         await db.auditlog.delete_many(where={"tenantId": t_id})
         await db.agenttask.delete_many(where={"tenantId": t_id})
     except: pass
+    
     await db.tenant.upsert(where={"id": t_id}, data={"create": {"id": t_id, "name": "Brand"}, "update": {}})
     await db.product.create(data={"tenantId": t_id, "name": "Organic Neem Wood Comb", "category": "Personal Care", "status": "RESEARCHING", "winningScore": 75})
     await db.product.create(data={"tenantId": t_id, "name": "Bamboo Toothbrush Set", "category": "Personal Care", "status": "SHORTLISTED", "winningScore": 82})
     p_comb = await db.product.create(data={"tenantId": t_id, "name": "Handmade Neem Comb", "category": "Personal Care", "status": "APPROVED", "winningScore": 88})
     s_green = await db.supplier.create(data={"tenantId": t_id, "productId": p_comb.id, "name": "GreenCraft Industries", "source": "IndiaMART", "price": 38.0, "moq": 1000, "rating": 4.8, "status": "APPROVED"})
     await db.order.create(data={"tenantId": t_id, "supplierId": s_green.id, "productName": "Organic Neem Wood Comb", "units": 1000, "totalAmount": 38000.0, "status": "CONFIRMED"})
-    await db.intelligencealert.create(data={"tenantId": t_id, "title": "New product ready: Organic Neem Wood Comb", "type": "SUCCESS", "badge": "NEW", "content": "Product sourced at ₹38/unit with 71% margin potential."})
+    await db.intelligence.create(data={"tenantId": t_id, "title": "New product ready: Organic Neem Wood Comb", "type": "SUCCESS", "badge": "NEW", "content": "Product sourced at ₹38/unit with 71% margin potential."})
     await db.auditlog.create(data={"tenantId": t_id, "action": "SUPPLIER_APPROVED", "entity": "GreenCraft Industries"})
     await db.agenttask.create(data={"tenantId": t_id, "agentName": "Market Intel", "status": "MONITORING", "progress": 100, "details": "Scanned listings."})
+    
     return {"status": "SUCCESS"}
 
 @app.post("/research")

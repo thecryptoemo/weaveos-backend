@@ -16,6 +16,8 @@ model Tenant {
   storeBrain StoreBrain[]
   logs      AuditLog[]
   tasks     AgentTask[]
+  orders    Order[]
+  intel     Intelligence[]
 }
 
 model Product {
@@ -44,6 +46,7 @@ model Supplier {
   rating       Float?
   status       String   @default("DISCOVERED")
   negotiations Negotiation[]
+  orders       Order[]
 }
 
 model Negotiation {
@@ -53,6 +56,31 @@ model Negotiation {
   status      String   @default("ACTIVE")
   history     String   @default("[]")
   createdAt   DateTime @default(now())
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  productName String
+  units       Int
+  totalAmount Float
+  status      String   @default("CONFIRMED")
+  eta         String?
+  createdAt   DateTime @default(now())
+}
+
+model Intelligence {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  title     String
+  type      String 
+  badge     String? 
+  content   String
+  timestamp DateTime @default(now())
 }
 
 model Report {
